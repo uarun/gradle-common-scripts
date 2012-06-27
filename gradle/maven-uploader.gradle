@@ -1,3 +1,7 @@
+//... ============================================================================================ .../
+//...                Gradle script for uploading artifacts to maven repository                     .../
+//... ============================================================================================ .../
+
 apply plugin: 'maven'
 
 //... We define the uploadArchives task, and the project calling us

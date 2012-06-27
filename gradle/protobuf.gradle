@@ -1,3 +1,6 @@
+//... ============================================================================================ .../
+//...                 Gradle script for Compiling Protocol Buffers Message definition              .../
+//... ============================================================================================ .../
 
 task generateProtos(description: 'Generated source code from protos') << {
     protoGenSrcDirPath = new File(protobuf.genSrcDir)

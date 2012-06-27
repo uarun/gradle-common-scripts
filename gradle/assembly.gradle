@@ -1,0 +1,46 @@
+import org.apache.tools.ant.filters.ReplaceTokens
+import org.gradle.api.internal.artifacts.publish.DefaultPublishArtifact 
+
+packageCopySpec = copySpec { 
+    //... This root level spec is inherited by the child CopySpecs
+    into(project.name)
+
+    //... Copy over scripts with template replacements
+    into('scripts') {
+        from('scripts').
+            filter(ReplaceTokens, tokens: [ 'app.version'   : project.version, 
+                                            'app.name'      : project.name,
+                                            'app.mainClass' : mainClass ])
+        fileMode = 0755
+    }
+
+    //... Jetty runner jar
+    into('lib') {
+        from jar.outputs.files
+        from configurations.runtime
+    }
+
+    //... External configuration files
+    into('conf') {
+        from('conf')
+    }
+}
+
+task buildDistPackage(type: Tar) {
+    description = 'Build release package in tar gzip format'
+    classifier  = 'dist'
+    extension   = 'tgz'
+
+    destinationDir = project.buildDir
+    compression = Compression.GZIP
+
+    with project.packageCopySpec
+}
+
+//... Add the artifact we create to be published to Maven repo
+artifacts {
+    archives new DefaultPublishArtifact(project.name, 'tgz', 'tgz', distClassifier, new Date(), 
+                                                       file("${buildDir}/${project.name}-${version}-${distClassifier}.tgz"))
+}
+
+

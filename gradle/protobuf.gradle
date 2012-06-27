@@ -1,0 +1,92 @@
+
+task generateProtos(description: 'Generated source code from protos') << {
+    protoGenSrcDirPath = new File(protobuf.genSrcDir)
+    protoGenSrcDirPath.mkdirs()
+
+    logger.info "[protobuf] Proto file locations: ${protobuf.sources}"
+    logger.info "[protobuf] Invoking ${protobuf.executable} on ${protobuf.sources}"
+    logger.info "[protobuf] Generated sources will be placed under ${protobuf.genSrcDir}"
+
+    def cmd = [ protobuf.executable ]                               //... Executable
+    protobuf.sources*.parent.each { cmd += "--proto_path=${it}" }   //... Include path
+    cmd += "--proto_path=${protobuf.home}/src"                      //... Include src as one of the paths
+    cmd += "--proto_path=${protobuf.sharedProtosDir}/"              //... Include shared protos dir
+    cmd += "--java_out=${protoGenSrcDirPath}"                       //... Destination for generated files
+    protobuf.sources*.path.each { cmd += it }                       //... The .proto file names
+
+    logger.info "[protobuf] Command: ${cmd}"
+
+    def output = new StringBuffer()
+    Process result = cmd.execute()
+    result.consumeProcessOutput(output, output)
+    result.waitFor()
+    if (result.exitValue() == 0) {
+        logger.info "Return value of protoc: ${output.toString()}"
+    }
+    else { 
+        throw new RuntimeException("Protoc failed: " + output.toString())
+    }
+}
+
+generateProtos {
+    inputs.files { protobuf.sources }
+    outputs.dir { new File(protobuf.genSrcDir) }
+}
+
+/*
+task compileProtos(description: 'Compile generated proto sources') << {
+    classesDir = new File("${buildDir}/classes")
+    classesDir.mkdirs()
+
+    logger.info "[protobuf] Compiling generated sources to ${protobuf.classesDir}"
+    try {
+        ant.javac(destdir: protobuf.classesDir, srcDir: protobuf.genSrcDir,
+                  classpath: configurations.runtime.asPath,
+                  includeantruntime: false)
+    }
+    catch (Exception ex) {
+        throw new RuntimeException("[protoc] Could not compile generated sources: ${ex.message}", ex)
+    }
+}
+
+compileProtos {
+    inputs.dir generateProtos.outputs.files              //... Creats an implicit dependency on generateProtos task
+    outputs.dir { new File(protobuf.classesDir) }
+}
+*/
+
+task protobuf(dependsOn: generateProtos) {
+    description = 'Generate and compile protocol buffers (.proto) file(s)'
+    home           = "${projectDir}/../../../../../../../../thirdparty/protobuf-2.4.1"
+    winProtocLoc   = 'vsprojects'
+    linuxProtocLoc = 'linux64-gcc41'
+    executable     =  getExecutable()
+
+    sharedProtosDir = "${projectDir}/../../../../../../../Shared/SourceGen/proto"
+    genSrcDir       = "${buildDir}/generated-sources"
+    classesDir      = "${buildDir}/classes"
+}
+
+task cleanProtos(description: 'Clean up generated files') << {
+    delete protobuf.genSrcDir
+}
+
+def getExecutable() {
+    if (isUnix())         { return "${protobuf.home}/${protobuf.linuxProtocLoc}/bin/protoc"   }
+    else if (isWindows()) { return "${protobuf.home}/${protobuf.winProtocLoc}/bin/protoc.exe" }
+    else {
+        throw new RuntimeException("Unknown OS Type")
+    }
+}
+
+def isUnix() {
+    def osName = System.getProperty("os.name").toLowerCase()
+    return (osName.indexOf("nix") >= 0 ||
+            osName.indexOf("nux") >= 0)
+}
+
+def isWindows() {
+    def osName = System.getProperty("os.name").toLowerCase()
+    return (osName.indexOf("win") >= 0)
+}
+

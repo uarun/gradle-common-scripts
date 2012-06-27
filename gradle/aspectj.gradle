@@ -1,0 +1,36 @@
+//... ============================================================================================ .../
+//...                                     AspectJ Gradle Script                                    .../
+//... ============================================================================================ .../
+
+//... The caller is responsible for setting the sourceSets to include the location of the aspects
+//... The caller should also set values for the following configurations
+configurations {
+    ajc
+    aspects
+    ajInpath
+}
+
+task compileJava(dependsOn: JavaPlugin.PROCESS_RESOURCES_TASK_NAME, overwrite: true) {
+    // dependsOn configurations.ajc.getTaskDependencyFromProjectDependency(true, "compileJava")
+    dependsOn configurations.ajc.getTaskDependencyFromProjectDependency(true, "jar")
+    doLast {
+        ant.taskdef(resource: "org/aspectj/tools/ant/taskdefs/aspectjTaskdefs.properties", classpath: configurations.ajc.asPath)
+        ant.iajc(source:     sourceCompatibility, 
+                 target:     targetCompatibility, 
+                 destDir:    sourceSets.main.classesDir.absolutePath, maxmem:  "512m", fork:"true", verbose: "true", showWeaveInfo: "true",
+
+                 aspectPath:    configurations.aspects.asPath, 
+                 inpath:        configurations.ajInpath.asPath, 
+                 forkClasspath: configurations.ajc.asPath,
+                 classpath:     configurations.compile.asPath, sourceRootCopyFilter:"**/.svn/*,**/*.java,**/*.aj") {
+
+            sourceroots {
+                sourceSets.main.java.srcDirs.each {
+                    pathelement(location:it.absolutePath)
+                }
+            }
+        }
+    }
+}
+
+

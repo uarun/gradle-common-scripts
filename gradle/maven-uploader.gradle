@@ -1,0 +1,18 @@
+apply plugin: 'maven'
+
+//... We define the uploadArchives task, and the project calling us
+//... is responsible for adding the artifacts to the archives configuration
+
+uploadArchives {
+    repositories.mavenDeployer {
+        uniqueVersion = false
+        repository(url: nexusReleasesRepo) {
+            authentication(userName: nexusUserName, password: nexusPassword)
+        }
+
+        snapshotRepository(url: nexusSnapshotsRepo) {
+            authentication(userName: nexusUserName, password: nexusPassword)
+        }
+    }
+}
+

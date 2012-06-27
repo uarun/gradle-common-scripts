@@ -1,0 +1,58 @@
+import org.apache.tools.ant.filters.ReplaceTokens
+
+configurations {
+    jettyRunner
+    jettyRunner.transitive = false
+
+    distWars
+}
+
+dependencies {
+    jettyRunner libraries.jetty_runner
+    jettyRunner libraries.jsp_api
+
+    distWars project(grailsProject)
+}
+
+packageCopySpec = copySpec { 
+    //... This root level spec is inherited by the child CopySpecs
+    into(appName)
+
+    //... Copy over scripts with template replacements
+    into('scripts') {
+        from('scripts').
+            filter(ReplaceTokens, tokens: ['app.version'   : version, 
+                                           'jetty.version' : jetty_version,
+                                           'app.name'      : appName ])
+        fileMode = 0755
+    }
+
+    //... Jetty runner jar
+    into('lib') {
+        from configurations.jettyRunner
+    }
+
+    //... War file from the subproject goes here
+    into('webapps') {
+        // from configurations.distWars
+        // from project(grailsProject).file('target')
+        from project(grailsProject).fileTree('target').include('**/*.war')
+    }
+
+    //... External configuration files
+    into('conf') {
+        from project(grailsProject).file('conf')
+    }
+}
+
+task buildPackage(type: Tar) {
+    description = 'Build release package in tar gzip format'
+    classifier  = 'dist'
+    extension   = 'tgz'
+
+    destinationDir = project.buildDir
+    compression = Compression.GZIP
+
+    with project.packageCopySpec
+}
+
